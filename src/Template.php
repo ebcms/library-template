@@ -34,6 +34,17 @@ class Template
         return $this;
     }
 
+    public function deletePath(string $name): bool
+    {
+        unset($this->paths[$name]);
+        return true;
+    }
+
+    public function getPaths(): array
+    {
+        return $this->paths;
+    }
+
     public function setDebug(bool $debug): self
     {
         $this->debug = $debug;
@@ -68,11 +79,10 @@ class Template
             $this->assign($data);
         }
 
-        $fullfile = $this->getTplFile($file);
-        $cache_key = $this->getCacheKey($cache_key ?: $fullfile);
+        $cache_key = $this->getCacheKey($cache_key ?: $file);
 
         if ($this->debug || !$this->cache || !$code = $this->cache->get($cache_key)) {
-            $code = $this->parseString(file_get_contents($fullfile));
+            $code = $this->parseString($this->getTplFileContent($file));
             if (!$this->debug && $this->cache) {
                 $this->cache->set($cache_key, $code);
             }
@@ -100,6 +110,20 @@ class Template
         return $this->render();
     }
 
+    public function getTplFile(string $tpl): ?string
+    {
+        list($file, $name) = explode('@', $tpl);
+        if ($name && $file && isset($this->paths[$name])) {
+            foreach (clone $this->paths[$name] as $path) {
+                $fullname = $path . DIRECTORY_SEPARATOR . $file . $this->ext;
+                if (is_file($fullname)) {
+                    return $fullname;
+                }
+            }
+        }
+        return null;
+    }
+
     private function getCacheKey(string $name): string
     {
         return str_replace(['{', '}', '(', ')', '/', '\\', '@', ':'], '_', 'tpl_' . $name);
@@ -113,16 +137,10 @@ class Template
         return $string;
     }
 
-    private function getTplFile(string $tpl): string
+    private function getTplFileContent(string $tpl): string
     {
-        list($file, $name) = explode('@', $tpl);
-        if ($name && $file && isset($this->paths[$name])) {
-            foreach (clone $this->paths[$name] as $path) {
-                $fullname = $path . DIRECTORY_SEPARATOR . $file . $this->ext;
-                if (is_file($fullname)) {
-                    return $fullname;
-                }
-            }
+        if ($filename = $this->getTplFile($tpl)) {
+            return file_get_contents($filename);
         }
         throw new \Exception('template file "' . $tpl . '" is not found!');
     }
@@ -198,7 +216,7 @@ class Template
                 $html = '';
                 $tpls = explode(',', $matchs[1]);
                 foreach ($tpls as $tpl) {
-                    $html .= file_get_contents($this->getTplFile($tpl));
+                    $html .= $this->getTplFileContent($tpl);
                 }
                 return $this->parseTag($this->buildLiteral($html));
             },
