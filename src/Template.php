@@ -45,6 +45,11 @@ class Template
         return $this->paths;
     }
 
+    public function getExt(): string
+    {
+        return $this->ext;
+    }
+
     public function setDebug(bool $debug): self
     {
         $this->debug = $debug;
