@@ -185,10 +185,10 @@ class Template
                 return '<?php ' . $matchs[1] . '; ?>';
             },
             '/\{dump\s+(.*)\s*;?\s*\}/Ui' => function ($matchs) {
-                return '<pre><?php var_dump(' . $matchs[1] . '); ?></pre>';
+                return '<pre><?php (function(){ob_start();var_dump(' . $matchs[1] . ');$content = ob_get_contents(); ob_end_clean();echo htmlspecialchars($content);})(); ?></pre>';
             },
             '/\{print\s+(.*)\s*;?\s*\}/Ui' => function ($matchs) {
-                return '<pre><?php print_r(' . $matchs[1] . '); ?></pre>';
+                return '<pre><?php echo htmlspecialchars(print_r(' . $matchs[1] . ', true)); ?></pre>';
             },
             '/\{echo\s+(.*)\s*;?\s*\}/Ui' => function ($matchs) {
                 return '<?php echo ' . $matchs[1] . '; ?>';
@@ -226,13 +226,13 @@ class Template
                 return $this->parseTag($this->buildLiteral($html));
             },
             '/\{(\$[^{}\'"]*)((\.[^{}\'"]+)+)\}/Ui' => function ($matchs) {
-                return '<?php echo ' . $matchs[1] . substr(str_replace('.', '\'][\'', $matchs[2]), 2) . '\']' . '; ?>';
+                return '<?php echo htmlspecialchars(' . $matchs[1] . substr(str_replace('.', '\'][\'', $matchs[2]), 2) . '\']' . '); ?>';
             },
             '/\{(\$[^{}]*)\}/Ui' => function ($matchs) {
-                return '<?php echo ' . $matchs[1] . '; ?>';
+                return '<?php echo htmlspecialchars(' . $matchs[1] . '); ?>';
             },
             '/\{:([^{}]*)\s*;?\s*\}/Ui' => function ($matchs) {
-                return '<?php echo ' . $matchs[1] . '; ?>';
+                return '<?php echo htmlspecialchars(' . $matchs[1] . '); ?>';
             },
             '/\?>[\s\n]*<\?php/Ui' => function ($matchs) {
                 return '';
