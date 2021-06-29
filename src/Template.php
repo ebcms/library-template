@@ -185,7 +185,7 @@ class Template
                 return '<?php ' . $matchs[1] . '; ?>';
             },
             '/\{dump\s+(.*)\s*;?\s*\}/Ui' => function ($matchs) {
-                return '<pre><?php (function()use(' . $matchs[1] . '){ob_start();var_dump(' . $matchs[1] . ');$content = ob_get_contents(); ob_end_clean();echo htmlspecialchars($content);})(); ?></pre>';
+                return '<pre><?php ob_start();var_dump(' . $matchs[1] . ');echo htmlspecialchars(ob_get_clean()); ?></pre>';
             },
             '/\{print\s+(.*)\s*;?\s*\}/Ui' => function ($matchs) {
                 return '<pre><?php echo htmlspecialchars(print_r(' . $matchs[1] . ', true)); ?></pre>';
