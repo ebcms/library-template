@@ -8,58 +8,42 @@ use Ebcms\IncludeWrapper;
 
 class Template
 {
-    private $paths = [];
-    private $ext = '.php';
+    public $type_list = [];
+    public $ext = '.php';
 
-    private $debug = false;
     private $cache = null;
 
-    private $literals = [];
+    private $path_list = [];
     private $extends = [];
+    private $literals = [];
 
     private $code = '';
     private $data = [];
 
-    public function __construct(CacheInterface $cache = null)
-    {
+    public function __construct(
+        CacheInterface $cache = null
+    ) {
         $this->cache = $cache;
     }
 
     public function addPath(string $name, string $path, $priority = 0): self
     {
-        if (!isset($this->paths[$name])) {
-            $this->paths[$name] = new SplPriorityQueue;
+        if (!isset($this->path_list[$name])) {
+            $this->path_list[$name] = new SplPriorityQueue;
         }
-        $this->paths[$name]->insert($path, $priority);
+        $this->path_list[$name]->insert($path, $priority);
         return $this;
     }
 
     public function deletePath(string $name): bool
     {
-        unset($this->paths[$name]);
+        unset($this->path_list[$name]);
         return true;
     }
 
-    public function getPaths(): array
+    public function getPathList(): array
     {
-        return $this->paths;
-    }
-
-    public function getExt(): string
-    {
-        return $this->ext;
-    }
-
-    public function setDebug(bool $debug): self
-    {
-        $this->debug = $debug;
-        return $this;
-    }
-
-    public function setCache(CacheInterface $cache): self
-    {
-        $this->cache = $cache;
-        return $this;
+        return clone $this->path_list;
     }
 
     public function extend(string $preg, callable $callback): self
@@ -78,17 +62,17 @@ class Template
         return $this;
     }
 
-    public function renderFromFile(string $file, array $data = [], string $cache_key = ''): string
+    public function renderFromFile(string $file, array $data = [], string $cache_key = null): string
     {
         if ($data) {
             $this->assign($data);
         }
 
-        $cache_key = $this->getCacheKey($cache_key ?: $file);
+        $cache_key = $this->getCacheKey(is_null($cache_key) ? $file : $cache_key);
 
-        if ($this->debug || !$this->cache || !$code = $this->cache->get($cache_key)) {
+        if (!$this->cache || !$code = $this->cache->get($cache_key)) {
             $code = $this->parseString($this->getTplFileContent($file));
-            if (!$this->debug && $this->cache) {
+            if ($this->cache) {
                 $this->cache->set($cache_key, $code);
             }
         }
@@ -97,16 +81,17 @@ class Template
         return $this->render();
     }
 
-    public function renderFromString(string $string, array $data = [], string $cache_key = ''): string
+    public function renderFromString(string $string, array $data = [], string $cache_key = null): string
     {
         if ($data) {
             $this->assign($data);
         }
-        $cache_key = $this->getCacheKey($cache_key ?: md5($string));
 
-        if ($this->debug || !$this->cache || !$code = $this->cache->get($cache_key)) {
+        $cache_key = $this->getCacheKey(is_null($cache_key) ? md5($string) : $cache_key);
+
+        if (!$this->cache || !$code = $this->cache->get($cache_key)) {
             $code = $this->parseString($string);
-            if (!$this->debug && $this->cache) {
+            if ($this->cache) {
                 $this->cache->set($cache_key, $code);
             }
         }
@@ -115,14 +100,18 @@ class Template
         return $this->render();
     }
 
-    public function getTplFile(string $tpl): ?string
+    private function getTplFile(string $tpl): ?string
     {
         list($file, $name) = explode('@', $tpl);
-        if ($name && $file && isset($this->paths[$name])) {
-            foreach (clone $this->paths[$name] as $path) {
-                $fullname = $path . DIRECTORY_SEPARATOR . $file . $this->ext;
-                if (is_file($fullname)) {
-                    return $fullname;
+        if ($name && $file && isset($this->path_list[$name])) {
+            $type_list = $this->type_list;
+            $type_list[] = 'default';
+            foreach (clone $this->path_list[$name] as $path) {
+                foreach ($type_list as $type) {
+                    $fullname = $path . DIRECTORY_SEPARATOR . $type . DIRECTORY_SEPARATOR . $file . $this->ext;
+                    if (is_file($fullname)) {
+                        return $fullname;
+                    }
                 }
             }
         }
